@@ -28,27 +28,24 @@ import (
 )
 
 const (
-	httpsTemplate = `` + "\n" +
-		`DNS Lookup :	   %s` + "\n" +
-		`TCP Connection :   %s` + "\n" +
-		`TLS Handshake :	    %s` + "\n" +
-		`Server Processing : %s` + "\n" +
-		`Content Transfer :%s` + "\n" +
-		`namelookup :		%s` + "\n" +
-		`connect :		%s` + "\n" +
-		`pretransfer :		%s` + "\n" +
-		`starttransfer :		%s` + "\n\n" +
-		`			%s` + "\n"
+	httpsTemplate = `` +
+		`  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer` + "\n" +
+		`[%s  |     %s  |    %s  |        %s  |       %s  ]` + "\n" +
+		`            |                |               |                   |                  |` + "\n" +
+		`   namelookup:%s      |               |                   |                  |` + "\n" +
+		`                       connect:%s     |                   |                  |` + "\n" +
+		`                                   pretransfer:%s         |                  |` + "\n" +
+		`                                                     starttransfer:%s        |` + "\n" +
+		`                                                                                total:%s` + "\n"
 
-	httpTemplate = `` + "\n" +
-		`DNS Lookup :	   %s` + "\n" +
-		`TCP Connection :   %s` + "\n" +
-		`Server Processing : %s` + "\n" +
-		`Content Transfer :%s` + "\n" +
-		`namelookup :		%s` + "\n" +
-		`connect :		%s` + "\n" +
-		`starttransfer :		%s` + "\n\n" +
-		`			%s` + "\n"
+	httpTemplate = `` +
+		`   DNS Lookup   TCP Connection   Server Processing   Content Transfer` + "\n" +
+		`[ %s  |     %s  |        %s  |       %s  ]` + "\n" +
+		`             |                |                   |                  |` + "\n" +
+		`    namelookup:%s      |                   |                  |` + "\n" +
+		`                        connect:%s         |                  |` + "\n" +
+		`                                      starttransfer:%s        |` + "\n" +
+		`                                                                 total:%s` + "\n"
 )
 
 var (
@@ -355,6 +352,17 @@ func visit(url *url.URL) {
 			fmtb(t4.Sub(t0)), // starttransfer
 			fmtb(t7.Sub(t0)), // total
 		)
+
+		printf("DNS Lookup :        %s\n", fmta(t1.Sub(t0)))       // dns lookup
+		printf("TCP Connection :    %s\n", fmta(t2.Sub(t1)))       // tcp connection
+		printf("TLS Handshake :     %s\n", fmta(t6.Sub(t5)))       // tls handshake
+		printf("Server Processing : %s\n", fmta(t4.Sub(t3)))       // server processing
+		printf("Content Transfer :  %s\n", fmta(t7.Sub(t4)))       // content transfer
+		printf("namelookup :             %s\n", fmtb(t1.Sub(t0)))  // namelookup
+		printf("connect :               %s\n", fmtb(t2.Sub(t0)))   // connect
+		printf("pretransfer :           %s\n", fmtb(t3.Sub(t0)))   // pretransfer
+		printf("starttransfer :         %s\n\n", fmtb(t4.Sub(t0))) // starttransfer
+		printf("Total : %s\n", fmtb(t7.Sub(t0)))                   // total
 	case "http":
 		printf(colorize(httpTemplate),
 			fmta(t1.Sub(t0)), // dns lookup
@@ -366,6 +374,14 @@ func visit(url *url.URL) {
 			fmtb(t4.Sub(t0)), // starttransfer
 			fmtb(t7.Sub(t0)), // total
 		)
+		printf("DNS Lookup :        %s\n", fmta(t1.Sub(t0)))       // dns lookup
+		printf("TCP Connection :    %s\n", fmta(t3.Sub(t1)))       // tcp connection
+		printf("Server Processing : %s\n", fmta(t4.Sub(t3)))       // server processing
+		printf("Content Transfer :  %s\n", fmta(t7.Sub(t4)))       // content transfer
+		printf("namelookup :             %s\n", fmtb(t1.Sub(t0)))  // namelookup
+		printf("connect :               %s\n", fmtb(t3.Sub(t0)))   // connect
+		printf("starttransfer :         %s\n\n", fmtb(t4.Sub(t0))) // starttransfer
+		printf("Total : %s\n", fmtb(t7.Sub(t0)))                   // total
 	}
 
 	if followRedirects && isRedirect(resp) {
