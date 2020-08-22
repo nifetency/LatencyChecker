@@ -28,24 +28,27 @@ import (
 )
 
 const (
-	httpsTemplate = `` +
-		`  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer` + "\n" +
-		`[%s  |     %s  |    %s  |        %s  |       %s  ]` + "\n" +
-		`            |                |               |                   |                  |` + "\n" +
-		`   namelookup:%s      |               |                   |                  |` + "\n" +
-		`                       connect:%s     |                   |                  |` + "\n" +
-		`                                   pretransfer:%s         |                  |` + "\n" +
-		`                                                     starttransfer:%s        |` + "\n" +
-		`                                                                                total:%s` + "\n"
+	httpsTemplate = `` + "\n" +
+		`DNS Lookup :	   %s` + "\n" +
+		`TCP Connection :   %s` + "\n" +
+		`TLS Handshake :	    %s` + "\n" +
+		`Server Processing : %s` + "\n" +
+		`Content Transfer :%s` + "\n" +
+		`namelookup :		%s` + "\n" +
+		`connect :		%s` + "\n" +
+		`pretransfer :		%s` + "\n" +
+		`starttransfer :		%s` + "\n\n" +
+		`			%s` + "\n"
 
-	httpTemplate = `` +
-		`   DNS Lookup   TCP Connection   Server Processing   Content Transfer` + "\n" +
-		`[ %s  |     %s  |        %s  |       %s  ]` + "\n" +
-		`             |                |                   |                  |` + "\n" +
-		`    namelookup:%s      |                   |                  |` + "\n" +
-		`                        connect:%s         |                  |` + "\n" +
-		`                                      starttransfer:%s        |` + "\n" +
-		`                                                                 total:%s` + "\n"
+	httpTemplate = `` + "\n" +
+		`DNS Lookup :	   %s` + "\n" +
+		`TCP Connection :   %s` + "\n" +
+		`Server Processing : %s` + "\n" +
+		`Content Transfer :%s` + "\n" +
+		`namelookup :		%s` + "\n" +
+		`connect :		%s` + "\n" +
+		`starttransfer :		%s` + "\n\n" +
+		`			%s` + "\n"
 )
 
 var (
