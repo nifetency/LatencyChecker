@@ -63,6 +63,8 @@ var (
 	clientCertFile  string
 	fourOnly        bool
 	sixOnly         bool
+	outputTotal     bool
+	outputCol       bool
 
 	// number of redirects followed
 	redirectsFollowed int
@@ -82,7 +84,8 @@ func init() {
 	flag.BoolVar(&saveOutput, "O", false, "save body as remote filename")
 	flag.StringVar(&outputFile, "o", "", "output file for body")
 	flag.BoolVar(&showVersion, "v", false, "print version number")
-	flag.BoolVar(&opfmt, "f", true, "print format")
+	flag.BoolVar(&outputTotal, "t", false, "print total only")
+	flag.BoolVar(&outputCol, "c", false, "print column format")
 	flag.StringVar(&clientCertFile, "E", "", "client cert file for tls config")
 	flag.BoolVar(&fourOnly, "4", false, "resolve IPv4 addresses only")
 	flag.BoolVar(&sixOnly, "6", false, "resolve IPv6 addresses only")
@@ -123,70 +126,60 @@ func main() {
 		os.Exit(-1)
 	}
 
-	if opfmt {
-		fmt.Println("\nEnter output format:\na) Existing format \nb) Column format \nc) Only total\n ")
-
-		// var then variable name then variable type
-		var first string
-		// Taking input from user
-		fmt.Scanln(&first)
-		if first == "a" {
-			args := flag.Args()
-			if len(args) != 1 {
-				flag.Usage()
-				os.Exit(2)
-			}
-
-			if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
-				log.Fatal("must supply post body using -d when POST or PUT is used")
-			}
-
-			if onlyHeader {
-				httpMethod = "HEAD"
-			}
-
-			url := parseURL(args[0])
-
-			visit(url)
+	if outputCol {
+		args := flag.Args()
+		if len(args) != 1 {
+			flag.Usage()
+			os.Exit(2)
 		}
-		if first == "b" {
-			args := flag.Args()
-			if len(args) != 1 {
-				flag.Usage()
-				os.Exit(2)
-			}
 
-			if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
-				log.Fatal("must supply post body using -d when POST or PUT is used")
-			}
-
-			if onlyHeader {
-				httpMethod = "HEAD"
-			}
-
-			url := parseURL(args[0])
-
-			visit1(url)
+		if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
+			log.Fatal("must supply post body using -d when POST or PUT is used")
 		}
-		if first == "c" {
-			args := flag.Args()
-			if len(args) != 1 {
-				flag.Usage()
-				os.Exit(2)
-			}
 
-			if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
-				log.Fatal("must supply post body using -d when POST or PUT is used")
-			}
-
-			if onlyHeader {
-				httpMethod = "HEAD"
-			}
-
-			url := parseURL(args[0])
-
-			visit2(url)
+		if onlyHeader {
+			httpMethod = "HEAD"
 		}
+
+		url := parseURL(args[0])
+
+		visit1(url)
+	} else if outputTotal {
+		args := flag.Args()
+		if len(args) != 1 {
+			flag.Usage()
+			os.Exit(2)
+		}
+
+		if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
+			log.Fatal("must supply post body using -d when POST or PUT is used")
+		}
+
+		if onlyHeader {
+			httpMethod = "HEAD"
+		}
+
+		url := parseURL(args[0])
+
+		visit2(url)
+	} else {
+		args := flag.Args()
+		if len(args) != 1 {
+			flag.Usage()
+			os.Exit(2)
+		}
+
+		if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
+			log.Fatal("must supply post body using -d when POST or PUT is used")
+		}
+
+		if onlyHeader {
+			httpMethod = "HEAD"
+		}
+
+		url := parseURL(args[0])
+
+		visit(url)
 	}
 
 }
