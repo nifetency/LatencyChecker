@@ -449,8 +449,6 @@ func visit1(url *url.URL) {
 				log.Fatalf("unable to connect to host %v: %v", addr, err)
 			}
 			t2 = time.Now()
-
-			printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
 		},
 		GotConn:              func(_ httptrace.GotConnInfo) { t3 = time.Now() },
 		GotFirstResponseByte: func() { t4 = time.Now() },
@@ -509,29 +507,10 @@ func visit1(url *url.URL) {
 		log.Fatalf("failed to read response: %v", err)
 	}
 
-	bodyMsg := readResponseBody(req, resp)
-	resp.Body.Close()
-
 	t7 := time.Now() // after read body
 	if t0.IsZero() {
 		// we skipped DNS
 		t0 = t1
-	}
-
-	// print status line and headers
-	printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
-
-	names := make([]string, 0, len(resp.Header))
-	for k := range resp.Header {
-		names = append(names, k)
-	}
-	sort.Sort(headers(names))
-	for _, k := range names {
-		printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
-	}
-
-	if bodyMsg != "" {
-		printf("\n%s\n", bodyMsg)
 	}
 
 	fmta := func(d time.Duration) string {
