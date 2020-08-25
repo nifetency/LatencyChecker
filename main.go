@@ -59,6 +59,7 @@ var (
 	saveOutput      bool
 	outputFile      string
 	showVersion     bool
+	opfmt           bool
 	clientCertFile  string
 	fourOnly        bool
 	sixOnly         bool
@@ -81,6 +82,7 @@ func init() {
 	flag.BoolVar(&saveOutput, "O", false, "save body as remote filename")
 	flag.StringVar(&outputFile, "o", "", "output file for body")
 	flag.BoolVar(&showVersion, "v", false, "print version number")
+	flag.BoolVar(&opfmt, "f", true, "print format")
 	flag.StringVar(&clientCertFile, "E", "", "client cert file for tls config")
 	flag.BoolVar(&fourOnly, "4", false, "resolve IPv4 addresses only")
 	flag.BoolVar(&sixOnly, "6", false, "resolve IPv6 addresses only")
@@ -121,23 +123,72 @@ func main() {
 		os.Exit(-1)
 	}
 
-	args := flag.Args()
-	if len(args) != 1 {
-		flag.Usage()
-		os.Exit(2)
+	if opfmt {
+		fmt.Println("\nEnter output format:\na) Existing format \nb) Column format \nc) Only total\n ")
+
+		// var then variable name then variable type
+		var first string
+		// Taking input from user
+		fmt.Scanln(&first)
+		if first == "a" {
+			args := flag.Args()
+			if len(args) != 1 {
+				flag.Usage()
+				os.Exit(2)
+			}
+
+			if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
+				log.Fatal("must supply post body using -d when POST or PUT is used")
+			}
+
+			if onlyHeader {
+				httpMethod = "HEAD"
+			}
+
+			url := parseURL(args[0])
+
+			visit(url)
+		}
+		if first == "b" {
+			args := flag.Args()
+			if len(args) != 1 {
+				flag.Usage()
+				os.Exit(2)
+			}
+
+			if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
+				log.Fatal("must supply post body using -d when POST or PUT is used")
+			}
+
+			if onlyHeader {
+				httpMethod = "HEAD"
+			}
+
+			url := parseURL(args[0])
+
+			visit1(url)
+		}
+		if first == "c" {
+			args := flag.Args()
+			if len(args) != 1 {
+				flag.Usage()
+				os.Exit(2)
+			}
+
+			if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
+				log.Fatal("must supply post body using -d when POST or PUT is used")
+			}
+
+			if onlyHeader {
+				httpMethod = "HEAD"
+			}
+
+			url := parseURL(args[0])
+
+			visit2(url)
+		}
 	}
 
-	if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
-		log.Fatal("must supply post body using -d when POST or PUT is used")
-	}
-
-	if onlyHeader {
-		httpMethod = "HEAD"
-	}
-
-	url := parseURL(args[0])
-
-	visit(url)
 }
 
 // readClientCert - helper function to read client certificate
@@ -353,16 +404,6 @@ func visit(url *url.URL) {
 			fmtb(t7.Sub(t0)), // total
 		)
 
-		printf("DNS Lookup :        %s\n", fmta(t1.Sub(t0)))       // dns lookup
-		printf("TCP Connection :    %s\n", fmta(t2.Sub(t1)))       // tcp connection
-		printf("TLS Handshake :     %s\n", fmta(t6.Sub(t5)))       // tls handshake
-		printf("Server Processing : %s\n", fmta(t4.Sub(t3)))       // server processing
-		printf("Content Transfer :  %s\n", fmta(t7.Sub(t4)))       // content transfer
-		printf("namelookup :             %s\n", fmtb(t1.Sub(t0)))  // namelookup
-		printf("connect :               %s\n", fmtb(t2.Sub(t0)))   // connect
-		printf("pretransfer :           %s\n", fmtb(t3.Sub(t0)))   // pretransfer
-		printf("starttransfer :         %s\n\n", fmtb(t4.Sub(t0))) // starttransfer
-		printf("Total : %s\n", fmtb(t7.Sub(t0)))                   // total
 	case "http":
 		printf(colorize(httpTemplate),
 			fmta(t1.Sub(t0)), // dns lookup
@@ -374,6 +415,158 @@ func visit(url *url.URL) {
 			fmtb(t4.Sub(t0)), // starttransfer
 			fmtb(t7.Sub(t0)), // total
 		)
+
+	}
+
+	if followRedirects && isRedirect(resp) {
+		loc, err := resp.Location()
+		if err != nil {
+			if err == http.ErrNoLocation {
+				// 30x but no Location to follow, give up.
+				return
+			}
+			log.Fatalf("unable to follow redirect: %v", err)
+		}
+
+		redirectsFollowed++
+		if redirectsFollowed > maxRedirects {
+			log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
+		}
+
+		visit(loc)
+	}
+}
+
+func visit1(url *url.URL) {
+	req := newRequest(httpMethod, url, postBody)
+
+	var t0, t1, t2, t3, t4, t5, t6 time.Time
+
+	trace := &httptrace.ClientTrace{
+		DNSStart: func(_ httptrace.DNSStartInfo) { t0 = time.Now() },
+		DNSDone:  func(_ httptrace.DNSDoneInfo) { t1 = time.Now() },
+		ConnectStart: func(_, _ string) {
+			if t1.IsZero() {
+				// connecting to IP
+				t1 = time.Now()
+			}
+		},
+		ConnectDone: func(net, addr string, err error) {
+			if err != nil {
+				log.Fatalf("unable to connect to host %v: %v", addr, err)
+			}
+			t2 = time.Now()
+
+			printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
+		},
+		GotConn:              func(_ httptrace.GotConnInfo) { t3 = time.Now() },
+		GotFirstResponseByte: func() { t4 = time.Now() },
+		TLSHandshakeStart:    func() { t5 = time.Now() },
+		TLSHandshakeDone:     func(_ tls.ConnectionState, _ error) { t6 = time.Now() },
+	}
+	req = req.WithContext(httptrace.WithClientTrace(context.Background(), trace))
+
+	tr := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	switch {
+	case fourOnly:
+		tr.DialContext = dialContext("tcp4")
+	case sixOnly:
+		tr.DialContext = dialContext("tcp6")
+	}
+
+	switch url.Scheme {
+	case "https":
+		host, _, err := net.SplitHostPort(req.Host)
+		if err != nil {
+			host = req.Host
+		}
+
+		tr.TLSClientConfig = &tls.Config{
+			ServerName:         host,
+			InsecureSkipVerify: insecure,
+			Certificates:       readClientCert(clientCertFile),
+		}
+
+		// Because we create a custom TLSClientConfig, we have to opt-in to HTTP/2.
+		// See https://github.com/golang/go/issues/14275
+		err = http2.ConfigureTransport(tr)
+		if err != nil {
+			log.Fatalf("failed to prepare transport for HTTP/2: %v", err)
+		}
+	}
+
+	client := &http.Client{
+		Transport: tr,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// always refuse to follow redirects, visit does that
+			// manually if required.
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("failed to read response: %v", err)
+	}
+
+	bodyMsg := readResponseBody(req, resp)
+	resp.Body.Close()
+
+	t7 := time.Now() // after read body
+	if t0.IsZero() {
+		// we skipped DNS
+		t0 = t1
+	}
+
+	// print status line and headers
+	printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
+
+	names := make([]string, 0, len(resp.Header))
+	for k := range resp.Header {
+		names = append(names, k)
+	}
+	sort.Sort(headers(names))
+	for _, k := range names {
+		printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
+	}
+
+	if bodyMsg != "" {
+		printf("\n%s\n", bodyMsg)
+	}
+
+	fmta := func(d time.Duration) string {
+		return color.CyanString("%7dms", int(d/time.Millisecond))
+	}
+
+	fmtb := func(d time.Duration) string {
+		return color.CyanString("%-9s", strconv.Itoa(int(d/time.Millisecond))+"ms")
+	}
+
+	fmt.Println()
+
+	switch url.Scheme {
+	case "https":
+
+		printf("DNS Lookup :        %s\n", fmta(t1.Sub(t0)))      // dns lookup
+		printf("TCP Connection :    %s\n", fmta(t2.Sub(t1)))      // tcp connection
+		printf("TLS Handshake :     %s\n", fmta(t6.Sub(t5)))      // tls handshake
+		printf("Server Processing : %s\n", fmta(t4.Sub(t3)))      // server processing
+		printf("Content Transfer :  %s\n", fmta(t7.Sub(t4)))      // content transfer
+		printf("namelookup :             %s\n", fmtb(t1.Sub(t0))) // namelookup
+		printf("connect :               %s\n", fmtb(t2.Sub(t0)))  // connect
+		printf("pretransfer :           %s\n", fmtb(t3.Sub(t0)))  // pretransfer
+		printf("starttransfer :         %s\n", fmtb(t4.Sub(t0)))  // starttransfer
+		printf("total :			%s\n", fmtb(t7.Sub(t0)))                // total
+
+	case "http":
+
 		printf("DNS Lookup :        %s\n", fmta(t1.Sub(t0)))       // dns lookup
 		printf("TCP Connection :    %s\n", fmta(t3.Sub(t1)))       // tcp connection
 		printf("Server Processing : %s\n", fmta(t4.Sub(t3)))       // server processing
@@ -399,7 +592,121 @@ func visit(url *url.URL) {
 			log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
 		}
 
-		visit(loc)
+		visit1(loc)
+	}
+}
+
+func visit2(url *url.URL) {
+	req := newRequest(httpMethod, url, postBody)
+
+	var t0, t1 time.Time
+
+	trace := &httptrace.ClientTrace{
+		DNSStart: func(_ httptrace.DNSStartInfo) { t0 = time.Now() },
+		DNSDone:  func(_ httptrace.DNSDoneInfo) { t1 = time.Now() },
+		ConnectStart: func(_, _ string) {
+			if t1.IsZero() {
+				// connecting to IP
+				t1 = time.Now()
+			}
+		},
+		ConnectDone: func(net, addr string, err error) {
+			if err != nil {
+				log.Fatalf("unable to connect to host %v: %v", addr, err)
+			}
+		},
+	}
+	req = req.WithContext(httptrace.WithClientTrace(context.Background(), trace))
+
+	tr := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	switch {
+	case fourOnly:
+		tr.DialContext = dialContext("tcp4")
+	case sixOnly:
+		tr.DialContext = dialContext("tcp6")
+	}
+
+	switch url.Scheme {
+	case "https":
+		host, _, err := net.SplitHostPort(req.Host)
+		if err != nil {
+			host = req.Host
+		}
+
+		tr.TLSClientConfig = &tls.Config{
+			ServerName:         host,
+			InsecureSkipVerify: insecure,
+			Certificates:       readClientCert(clientCertFile),
+		}
+
+		// Because we create a custom TLSClientConfig, we have to opt-in to HTTP/2.
+		// See https://github.com/golang/go/issues/14275
+		err = http2.ConfigureTransport(tr)
+		if err != nil {
+			log.Fatalf("failed to prepare transport for HTTP/2: %v", err)
+		}
+	}
+
+	client := &http.Client{
+		Transport: tr,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// always refuse to follow redirects, visit does that
+			// manually if required.
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("failed to read response: %v", err)
+	}
+
+	resp.Body.Close()
+
+	t7 := time.Now() // after read body
+	if t0.IsZero() {
+		// we skipped DNS
+		t0 = t1
+	}
+
+	fmtb := func(d time.Duration) string {
+		return color.CyanString("%-9s", strconv.Itoa(int(d/time.Millisecond))+"ms")
+	}
+
+	fmt.Println()
+
+	switch url.Scheme {
+	case "https":
+
+		printf("Total : %s\n", fmtb(t7.Sub(t0))) // total
+	case "http":
+
+		printf("Total : %s\n", fmtb(t7.Sub(t0))) // total
+	}
+
+	if followRedirects && isRedirect(resp) {
+		loc, err := resp.Location()
+		if err != nil {
+			if err == http.ErrNoLocation {
+				// 30x but no Location to follow, give up.
+				return
+			}
+			log.Fatalf("unable to follow redirect: %v", err)
+		}
+
+		redirectsFollowed++
+		if redirectsFollowed > maxRedirects {
+			log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
+		}
+
+		visit2(loc)
 	}
 }
 
