@@ -11,7 +11,7 @@
 ## Installation
 `httpstat` requires Go 1.11 or later.
 ```
-$ go get github.com/davecheney/httpstat
+$ go install github.com/httpstat@latest
 ```	
 ## Usage
 ```
