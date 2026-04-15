@@ -11,7 +11,7 @@
 ## Installation
 `httpstat` requires Go 1.11 or later.
 ```
-$ go install github.com/httpstat@latest
+$ go get github.com/davecheney/httpstat
 ```	
 ## Usage
 ```
@@ -39,3 +39,13 @@ Bug reports are most welcome, but with the exception of #5, this project is clos
 Pull requests must include a `fixes #NNN` or `updates #NNN` comment. 
 
 Please discuss your design on the accompanying issue before submitting a pull request. If there is no suitable issue, please open one to discuss the feature before slinging code. Thank you.
+
+## Credits
+
+This project is based on [davecheney/httpstat](https://github.com/davecheney/httpstat).
+
+## Platform
+
+For more information, visit [nife.io](https://nife.io).
+
+
